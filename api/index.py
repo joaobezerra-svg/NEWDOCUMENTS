@@ -18,8 +18,22 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapi
 SERVICE_ACCOUNT_FILE = 'credentials.json'
 
 def get_services():
-    creds = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    creds = None
+    # 1. Tenta carregar do arquivo (Local)
+    if os.path.exists(SERVICE_ACCOUNT_FILE):
+        creds = service_account.Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    
+    # 2. Se não existir, tenta ler da Variável de Ambiente (Vercel)
+    elif os.getenv('GOOGLE_CREDENTIALS'):
+        import json
+        creds_info = json.loads(os.getenv('GOOGLE_CREDENTIALS'))
+        creds = service_account.Credentials.from_service_account_info(
+            creds_info, scopes=SCOPES)
+            
+    if not creds:
+        raise Exception("Credenciais não encontradas! (Arquivo credentials.json ou ENV GOOGLE_CREDENTIALS)")
+
     sheets_service = build('sheets', 'v4', credentials=creds)
     drive_service = build('drive', 'v3', credentials=creds)
     return sheets_service, drive_service
@@ -213,26 +227,30 @@ def processar():
         # SE FOR PDF, CONVERTE LOCALMENTE (USANDO WORD DO USUÁRIO)
         if formato == 'PDF':
             try:
-                from docx2pdf import convert
-                
-                # Garante que o PDF antigo não existe para evitar conflito
-                if os.path.exists(temp_pdf_path):
-                    os.remove(temp_pdf_path)
+                # Verifica se está rodando no Windows (Local)
+                if os.name == 'nt':
+                    from docx2pdf import convert
+                    
+                    if os.path.exists(temp_pdf_path):
+                        os.remove(temp_pdf_path)
 
-                # Converte usando caminhos absolutos
-                convert(temp_docx_path, temp_pdf_path)
-                
-                if not os.path.exists(temp_pdf_path):
-                     return {"error": "O arquivo PDF não foi gerado. Verifique se o Microsoft Word está ativado."}, 500
+                    convert(temp_docx_path, temp_pdf_path)
+                    
+                    if not os.path.exists(temp_pdf_path):
+                         return {"error": "Falha na conversão offline."}, 500
 
-                return send_file(
-                    temp_pdf_path,
-                    as_attachment=True,
-                    download_name="Portaria_Final.pdf",
-                    mimetype="application/pdf"
-                )
+                    return send_file(
+                        temp_pdf_path,
+                        as_attachment=True,
+                        download_name="Portaria_Final.pdf",
+                        mimetype="application/pdf"
+                    )
+                else:
+                    # No Vercel (Linux), não tem Word. 
+                    return {"error": "A geração de PDF requer Microsoft Word e só funciona rodando no computador local. No servidor online, use a opção 'GERAR NO DOCS'."}, 400
+
             except Exception as e:
-                return {"error": f"Erro na conversão PDF local: {str(e)}. Verifique se o MS Word está instalado e não há janelas de diálogo abertas nele."}, 500
+                return {"error": f"Erro PDF: {str(e)}"}, 500
 
         return {"error": "Formato inválido"}, 400
 
