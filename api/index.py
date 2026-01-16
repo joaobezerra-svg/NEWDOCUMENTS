@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, send_file, jsonify, render_template
 import os
 import re
 import io
@@ -49,15 +49,10 @@ def extrair_id(link):
 
 @app.route('/')
 def home():
-    # Caminho robusto para o Vercel vs Local
     try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        template_path = os.path.join(base_dir, 'public', 'index.html')
-        if not os.path.exists(template_path):
-             return f"Erro: Arquivo não encontrado em {template_path}. Base: {base_dir}", 404
-        return send_file(template_path)
+        return render_template('index.html')
     except Exception as e:
-        return f"Erro interno no Home: {str(e)}", 500
+        return f"Erro ao renderizar template: {str(e)}", 500
 
 @app.route('/api/ler-colunas', methods=['POST'])
 def ler_colunas():
