@@ -118,15 +118,18 @@ def processar():
             valor_ah = str(linha[idx_ah]) if idx_ah < len(linha) else ""
             if not valor_ah.strip(): continue
 
-            linha_texto = " ".join([str(c).strip().upper() for c in linha])
-            if termo_proibido and termo_proibido in linha_texto: continue
-
-            escola = str(linha[idx_esc]).strip() if idx_esc < len(linha) else "GERAL"
+            # 1. Monta a linha apenas com colunas visíveis
             dados_linha = []
             for i, _ in colunas_que_ficam:
                 val = str(linha[i]).strip() if i < len(linha) else ""
                 dados_linha.append(val)
-            
+
+            # 2. Verifica filtro APENAS nas colunas visíveis
+            linha_texto = " ".join([d.upper() for d in dados_linha])
+            if termo_proibido and termo_proibido in linha_texto: continue
+
+            # 3. Adiciona ao grupo
+            escola = str(linha[idx_esc]).strip() if idx_esc < len(linha) else "GERAL"
             grupos[escola].append(dados_linha)
 
         if not grupos:
