@@ -136,6 +136,22 @@ def processar():
              msg_erro = "Nenhum dado encontrado após filtros."
              if termo_proibido:
                  msg_erro += f" O filtro '{termo_proibido}' eliminou todas as linhas."
+                 
+                 # Diagnóstico: Descobrir em quais colunas o termo aparece
+                 colunas_afetadas = set()
+                 for linha in linhas_todas[4:]:
+                     if not linha: continue
+                     # Recria dados apenas das colunas visíveis
+                     dados = []
+                     col_names = []
+                     for i, nome in colunas_que_ficam:
+                         val = str(linha[i]).strip().upper() if i < len(linha) else ""
+                         if termo_proibido in val:
+                             colunas_afetadas.add(nome)
+                 
+                 if colunas_afetadas:
+                     msg_erro += f" O termo foi encontrado nas colunas: {', '.join(colunas_afetadas)}."
+
              return {"error": msg_erro}, 400
 
         # --- GERAÇÃO WORD ---
